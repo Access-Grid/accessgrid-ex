@@ -15,7 +15,7 @@ defmodule AccessGrid.Params do
   "Blank" means `nil`, key absent, an empty string `""`, or a whitespace-only
   string (`"   "`, `"\\t\\n"`, etc.). Empty lists, maps, and other values pass
   through — the server validates whether an empty collection is acceptable
-  for a given field (e.g. Rails rejects `subscribed_events: []` with its own
+  for a given field (e.g. the server rejects `subscribed_events: []` with its own
   clear 422 message).
 
   Atom-keyed maps only; mirrors the SDK's input convention.

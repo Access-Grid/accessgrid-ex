@@ -12,7 +12,7 @@ defmodule AccessGrid.Console do
       {:ok, result} = AccessGrid.Console.create_template(%{
         name: "Employee Badge",
         platform: "apple",
-        use_case: "employee_badge",
+        use_case: "corporate_id",
         protocol: "desfire"
       })
 
@@ -84,7 +84,7 @@ defmodule AccessGrid.Console do
   @doc """
   Creates a new card template.
 
-  Params are passed straight through to Rails — pass top-level keys using the
+  Params are passed straight through to the server — pass top-level keys using the
   exact wire names (no nested `design:` / `support_info:` wrappers). Image fields
   (`background`, `logo`, `icon`) accept base64-encoded strings; see
   `AccessGrid.Utils.base64_file/1` for a helper.
@@ -94,7 +94,7 @@ defmodule AccessGrid.Console do
     * `params` - Template configuration:
       * `:name` - Display name for the template (required)
       * `:platform` - `"apple"` or `"android"` (required)
-      * `:use_case` - e.g. `"employee_badge"` (required)
+      * `:use_case` - one of `"corporate_id"`, `"student_id"`, `"multi_family"`, `"hotel"` (required)
       * `:protocol` - `"desfire"` (Apple), `"seos"`, or `"smart_tap"` (Android)
       * `:allow_on_multiple_devices`, `:watch_count`, `:iphone_count` - Device limits
       * `:background_color`, `:label_color`, `:label_secondary_color` - Style settings
@@ -218,7 +218,7 @@ defmodule AccessGrid.Console do
   Runs Apple Wallet In-App Provisioning preflight for an access pass.
 
   Returns the identifiers needed to drive the iOS provisioning flow. Note that
-  Rails returns these keys in camelCase (Apple convention); the resulting struct
+  the server returns these keys in camelCase (Apple convention); the resulting struct
   uses snake_case Elixir-idiomatic field names.
 
   ## Parameters
@@ -278,7 +278,7 @@ defmodule AccessGrid.Console do
   @doc """
   Creates a card template pair from an existing Apple and Google template.
 
-  The Rails API enforces several validations before the pair is created:
+  The the API enforces several validations before the pair is created:
 
     * Both referenced templates must belong to the current account (404 otherwise).
     * Apple template must have `platform == "apple"` and Google template `platform == "android"` (422).
@@ -319,7 +319,7 @@ defmodule AccessGrid.Console do
   @doc """
   Lists all landing pages for the account.
 
-  Rails returns a flat JSON array — there is no `landing_pages` wrapper and no
+  The server returns a flat JSON array — there is no `landing_pages` wrapper and no
   pagination, so the result is `{:ok, list}` rather than `{:ok, list, pagination}`.
 
   ## Parameters
@@ -401,7 +401,7 @@ defmodule AccessGrid.Console do
   @doc """
   Lists all credential profiles for the account.
 
-  Rails returns a flat JSON array — no wrapper, no pagination — so the result
+  The server returns a flat JSON array — no wrapper, no pagination — so the result
   is `{:ok, list}` rather than `{:ok, list, pagination}`.
 
   ## Parameters
@@ -497,7 +497,7 @@ defmodule AccessGrid.Console do
   ## Returns
 
     * `{:ok, %Webhook{}}` - Created. For `bearer_token`, the struct includes
-      `private_key` (sensitive — store on receipt, Rails does not return it
+      `private_key` (sensitive — store on receipt, the server does not return it
       again). For `mtls`, the struct includes `client_cert` and `cert_expires_at`.
     * `{:error, reason, %HttpFailure{}}` - 422 on empty or invalid `subscribed_events`.
 
@@ -522,7 +522,7 @@ defmodule AccessGrid.Console do
 
   ## Returns
 
-    * `:ok` - Deleted (Rails returns 204 No Content; there is no body)
+    * `:ok` - Deleted (the server returns 204 No Content; there is no body)
     * `{:error, reason, %HttpFailure{}}` - 404 if id missing
 
   """
@@ -538,7 +538,7 @@ defmodule AccessGrid.Console do
   @doc """
   Lists HID Origo organizations registered to the account.
 
-  Rails returns a flat JSON array — no wrapper, no pagination.
+  The server returns a flat JSON array — no wrapper, no pagination.
 
   ## Parameters
 
@@ -562,7 +562,7 @@ defmodule AccessGrid.Console do
   Registers a new HID Origo organization for the account.
 
   Idempotent on `name` → `slug`: if an org with the derived slug already exists,
-  Rails returns the existing record with status 200 instead of creating a new one.
+  the server returns the existing record with status 200 instead of creating a new one.
 
   ## Parameters
 
@@ -595,7 +595,7 @@ defmodule AccessGrid.Console do
   @doc """
   Completes registration for an HID Origo organization (activate).
 
-  Rails may return extra fields on the response (`already_completed: true` when
+  The server may return extra fields on the response (`already_completed: true` when
   the org is already activated, `job_queued: true` when a registration job is
   in flight). Those flags are not surfaced on the returned struct — inspect
   `org.status` to determine activation state.
@@ -659,7 +659,7 @@ defmodule AccessGrid.Console do
   @doc """
   Publishes a card template, moving it out of `draft` toward `ready` or `in-review`.
 
-  For Android+SEOS templates, Rails also syncs the template to the HID portal as
+  For Android+SEOS templates, the server also syncs the template to the HID portal as
   part of publish. If that sync fails, the template is rolled back to `draft`
   and this call returns `{:error, :validation_failed, failure}` with a
   field-tagged error message in `failure.body_decoded["message"]`.

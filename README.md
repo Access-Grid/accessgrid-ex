@@ -274,7 +274,7 @@ IO.puts("Environment: #{preflight.environment_identifier}")
 
 #### Publish a template
 
-For Android+SEOS templates, Rails also syncs the template to the HID portal. If the sync fails the template rolls back to `draft` and the call returns `{:error, :validation_failed, _}`.
+For Android+SEOS templates, the server also syncs the template to the HID portal. If the sync fails the template rolls back to `draft` and the call returns `{:error, :validation_failed, _}`.
 
 ```elixir
 {:ok, result} = AccessGrid.Console.publish_template("template_id")
@@ -431,7 +431,7 @@ IO.puts("Private key (store now — not retrievable later): #{webhook.private_ke
 
 #### Delete a webhook
 
-Returns `:ok` (flat, not `{:ok, _}`) on success since Rails returns 204 No Content.
+Returns `:ok` (flat, not `{:ok, _}`) on success since the server returns 204 No Content.
 
 ```elixir
 :ok = AccessGrid.Console.delete_webhook("webhook_id")
@@ -449,7 +449,7 @@ Enum.each(orgs, fn org -> IO.puts("#{org.id}: #{org.name} (status=#{org.status})
 
 #### Create a HID org
 
-Idempotent on the derived `slug` — if an org with the same slug already exists, Rails returns the existing record with 200 instead of creating a new one.
+Idempotent on the derived `slug` — if an org with the same slug already exists, the server returns the existing record with 200 instead of creating a new one.
 
 ```elixir
 {:ok, org} = AccessGrid.Console.create_hid_org(%{
@@ -477,7 +477,7 @@ Completes registration with the HID portal using the org's registered email and 
 IO.puts("Status: #{org.status}")
 ```
 
-Rails may return extra fields (`already_completed: true` if the org is already activated, `job_queued: true` if a registration job is in flight) — these aren't surfaced on the struct. Inspect `org.status` for the current state.
+The server may return extra fields (`already_completed: true` if the org is already activated, `job_queued: true` if a registration job is in flight) — these aren't surfaced on the struct. Inspect `org.status` for the current state.
 
 ### Ledger items
 
@@ -514,7 +514,7 @@ case AccessGrid.Utils.base64_file("path/to/badge.png") do
 end
 ```
 
-The helper does not validate the file's contents — Rails enforces format and size limits (PNG/JPEG, 10MB max) and returns clear errors. No URL support: if you have an image at a URL, fetch it with your own HTTP client and `Base.encode64/1` the bytes.
+The helper does not validate the file's contents — the server enforces format and size limits (PNG/JPEG, 10MB max) and returns clear errors. No URL support: if you have an image at a URL, fetch it with your own HTTP client and `Base.encode64/1` the bytes.
 
 ## Error Handling
 

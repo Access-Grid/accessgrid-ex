@@ -56,7 +56,7 @@ defmodule AccessGrid.LedgerItem.AccessPass do
   with just enough fields to identify the pass behind a ledger line; for the full
   access-pass shape, use `AccessGrid.AccessPasses.get/2`.
 
-  The field is named `pass_template` here (matching the wire key Rails returns)
+  The field is named `pass_template` here (matching the wire key the server returns)
   but its value is a `%AccessGrid.LedgerItem.CardTemplate{}`.
   """
 

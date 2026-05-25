@@ -64,7 +64,7 @@ defmodule AccessGrid.CardTemplate do
   @doc """
   Creates a CardTemplate struct from an API response map.
 
-  Rails groups some fields under nested objects (`allowed_device_counts`,
+  The server groups some fields under nested objects (`allowed_device_counts`,
   `support_settings`, `terms_settings`, `style_settings`) and renames a few
   along the way (e.g. wire `support_settings.url` → struct `:support_url`).
   This function does the flatten + rename so the struct's field names match

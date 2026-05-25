@@ -54,7 +54,7 @@ defmodule AccessGrid.ConsoleTest do
 
     test "passes design and support params flat at top level" do
       # The SDK no longer flattens nested `design:` / `support_info:` maps —
-      # callers pass design/support keys at the top level using the Rails wire
+      # callers pass design/support keys at the top level using the server wire
       # names exactly. Locks in that the SDK is a 1:1 passthrough.
       expect(mock_http_client(), :post, fn _url, opts ->
         assert opts[:body][:background_color] == "#FFFFFF"
@@ -80,8 +80,8 @@ defmodule AccessGrid.ConsoleTest do
     end
 
     test "passes credential_profiles and landing_pages arrays through unchanged" do
-      # Rails accepts these as top-level arrays of ex_id strings on create
-      # (resolved pre-strong-params in enterprise_controller). The SDK is a
+      # The server accepts these as top-level arrays of ex_id strings on create
+      # (resolved server-side before parameter filtering). The SDK is a
       # pure passthrough — no transform, no per-key handling.
       expect(mock_http_client(), :post, fn _url, opts ->
         assert opts[:body][:credential_profiles] == ["cp_ex1", "cp_ex2"]
@@ -103,11 +103,11 @@ defmodule AccessGrid.ConsoleTest do
     end
 
     test "passes image params (background, logo, icon) at top level unchanged" do
-      # Rails reads params[:background], params[:logo], params[:icon] —
+      # The server reads params[:background], params[:logo], params[:icon] —
       # NOT params[:background_image] etc. Callers pass base64 strings at the
       # top level using these wire-key names. Regression test for the bug
       # where the SDK previously mapped `:background_image` → wire `:background_image`,
-      # which Rails silently ignored.
+      # which the server silently ignored.
       expect(mock_http_client(), :post, fn _url, opts ->
         assert opts[:body][:background] == "<base64-background>"
         assert opts[:body][:logo] == "<base64-logo>"
@@ -199,7 +199,7 @@ defmodule AccessGrid.ConsoleTest do
 
   describe "read_template/2" do
     test "returns {:ok, CardTemplate} with full data on success" do
-      # Rails groups some fields under nested objects on the wire
+      # The server groups some fields under nested objects on the wire
       # (allowed_device_counts, support_settings, terms_settings, style_settings)
       # and renames a few keys (e.g. support_settings.url is wire-name for what
       # the SDK exposes as :support_url). CardTemplate.from_response/1 does

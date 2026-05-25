@@ -222,7 +222,7 @@ defmodule AccessGrid.Client do
   end
 
   # Whether the HTTP body is effectively empty for signature-verification purposes.
-  # When true, Rails falls back to verifying `sig_payload` from the query string
+  # When true, the server falls back to verifying `sig_payload` from the query string
   # (see `Api::ApiController#valid_payload_signature?`), so the client must
   # include `sig_payload` in the request params. Covers GET (no body), DELETE
   # (no body), and POST/PUT/PATCH with nil or empty-map bodies.

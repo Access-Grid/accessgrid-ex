@@ -13,7 +13,7 @@ defmodule AccessGrid.Utils do
   Pairs with image-accepting endpoints (`Console.create_template/2`,
   `Console.update_template/3`, `Console.create_landing_page/2`,
   `Console.update_landing_page/3`, `AccessPasses.issue/2`, `AccessPasses.update/3`) —
-  Rails decodes the base64 string server-side and attaches the resulting image.
+  the server decodes the base64 string and attaches the resulting image.
 
   Returns `{:ok, encoded}` on success or `{:error, reason}` on failure, where
   `reason` is the posix atom from `File.read/1` (`:enoent`, `:eacces`, etc.).

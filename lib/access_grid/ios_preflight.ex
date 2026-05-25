@@ -3,7 +3,7 @@ defmodule AccessGrid.IosPreflight do
   Response from `AccessGrid.Console.ios_preflight/3` — the identifiers needed
   to drive Apple Wallet In-App Provisioning for a specific access pass.
 
-  Rails returns these keys in camelCase (Apple convention, not the usual
+  The server returns these keys in camelCase (Apple convention, not the usual
   snake_case AccessGrid wire shape). This struct maps them to snake_case
   Elixir fields via `from_response/1`.
   """

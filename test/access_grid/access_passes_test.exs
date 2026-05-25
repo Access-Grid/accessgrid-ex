@@ -153,7 +153,7 @@ defmodule AccessGrid.AccessPassesTest do
 
       expect(mock_http_client(), :post, fn url, opts ->
         assert url == "https://api.accessgrid.com/v1/key-cards/card_abc123/suspend"
-        # Manage actions POST with no body, so Rails verifies the signature
+        # Manage actions POST with no body, so the server verifies the signature
         # against the `sig_payload` query param. Lock in that the SDK actually
         # sends it — without this, requests 401 at runtime even though the
         # client-layer signature value is correct.

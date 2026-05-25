@@ -222,7 +222,7 @@ defmodule AccessGrid.ClientTest do
     end
 
     test "DELETE uses resource ID payload + sends sig_payload in query" do
-      # Rails verifies signature against the request body OR `sig_payload` query
+      # The server verifies signature against the request body OR `sig_payload` query
       # when body is blank. For DELETE we have no body, so we must send the
       # payload in the query — same pattern as GET. Reuses the GET test vector.
       expected_sig = "0b1918a2ba398bbd851ba5ab8bbcfe3a3fdbee5857f64e49439d97a717f76d51"
@@ -240,7 +240,7 @@ defmodule AccessGrid.ClientTest do
 
     test "POST without body uses resource ID payload + sends sig_payload in query" do
       # /v1/key-cards/card_123/suspend -> payload = {"id":"card_123"}
-      # Rails falls back to `sig_payload` query when body is blank, so the
+      # The server falls back to `sig_payload` query when body is blank, so the
       # client must include it for the signature to match.
       expected_sig = "0b1918a2ba398bbd851ba5ab8bbcfe3a3fdbee5857f64e49439d97a717f76d51"
       expected_payload = ~s({"id":"card_123"})

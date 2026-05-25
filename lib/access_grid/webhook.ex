@@ -6,7 +6,7 @@ defmodule AccessGrid.Webhook do
   Auth-method-specific fields appear only when applicable:
 
     * `private_key` is returned ONLY on `auth_method: "bearer_token"` creation
-      (sensitive; store on receipt — Rails does not return it again).
+      (sensitive; store on receipt — the server does not return it again).
     * `client_cert` and `cert_expires_at` are returned on `auth_method: "mtls"`.
 
   Unused fields are `nil` on the struct.
