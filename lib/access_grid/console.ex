@@ -36,6 +36,7 @@ defmodule AccessGrid.Console do
   alias AccessGrid.LandingPage
   alias AccessGrid.LedgerItem
   alias AccessGrid.Params
+  alias AccessGrid.SmartTap
   alias AccessGrid.SmartTapReveal
   alias AccessGrid.Types
   alias AccessGrid.Webhook
@@ -688,41 +689,50 @@ defmodule AccessGrid.Console do
   end
 
   @doc """
-  Reveals Smart Tap credentials for a card template, encrypted with the
-  caller's ephemeral public key.
+  Reveals the SmartTap private key for a card template.
 
-  The caller decrypts the returned `encrypted_private_key` with their
-  corresponding private key. Each request must use a fresh ephemeral keypair —
-  Rails enforces single-use via the pubkey fingerprint (returns 409 if reused).
+  The SDK generates a fresh ephemeral P-256 keypair per call, submits the
+  public half, and decrypts the server's response client-side. The returned
+  `%SmartTapReveal{}` carries the decrypted PEM in `:private_key` (the value
+  callers normally want). The original `:encrypted_private_key` envelope is
+  also preserved on the struct as an escape hatch.
+
+  Each call uses a fresh keypair internally, so the server's single-use
+  enforcement on pubkey fingerprint is satisfied automatically.
 
   ## Parameters
 
-    * `template_id` - The card template id (must be SmartTap protocol with a `smart_tap_key`)
-    * `params` - Map with:
-      * `:client_public_key` - PEM-encoded public key string (required)
+    * `template_id` - The card template id (must be SmartTap protocol with a
+      `smart_tap_key`)
 
     * `opts` - Options:
       * `:client` - Client struct (optional, defaults to config)
 
   ## Returns
 
-    * `{:ok, %SmartTapReveal{}}` - Encrypted credentials envelope
-    * `{:error, :not_found, %HttpFailure{}}` - Template missing, not SmartTap, or no `smart_tap_key`
-    * `{:error, :conflict, %HttpFailure{}}` - This `client_public_key` has been used before
-    * `{:error, :validation_failed, %HttpFailure{}}` - Invalid PEM or save failure
+    * `{:ok, %SmartTapReveal{}}` - Reveal succeeded; `:private_key` holds the
+      plaintext SmartTap PEM
+    * `{:error, :decrypt_failed, body}` - HTTP succeeded but the returned
+      envelope didn't decrypt against the SDK-generated keypair (server-side
+      crypto drift or SDK bug)
+    * `{:error, :not_found, %HttpFailure{}}` - Template missing, not SmartTap,
+      or no `smart_tap_key`
+    * `{:error, :validation_failed, %HttpFailure{}}` - Server-side validation
+      failure
 
   """
-  @spec reveal_smart_tap(String.t(), map(), keyword()) :: smart_tap_reveal_result()
-  def reveal_smart_tap(template_id, params, opts \\ []) do
-    with :ok <- Params.require_present(template_id, :template_id),
-         :ok <- Params.require(params, [:client_public_key]) do
+  @spec reveal_smart_tap(String.t(), keyword()) :: smart_tap_reveal_result()
+  def reveal_smart_tap(template_id, opts \\ []) do
+    with :ok <- Params.require_present(template_id, :template_id) do
+      {ec_priv, pub_pem} = Keyword.get_lazy(opts, :keypair, &SmartTap.generate_keypair/0)
+
       opts[:client]
       |> Client.request(
         :post,
         "#{@base_path}/card-templates/#{template_id}/smart-tap/reveal",
-        body: params
+        body: %{client_public_key: pub_pem}
       )
-      |> handle_smart_tap_reveal_response()
+      |> handle_smart_tap_reveal_response(ec_priv)
     end
   end
 
@@ -897,11 +907,16 @@ defmodule AccessGrid.Console do
     {:error, reason_from_failure(failure), failure}
   end
 
-  defp handle_smart_tap_reveal_response({:ok, %HttpResponse{body_decoded: body}}) do
-    {:ok, SmartTapReveal.from_response(body)}
+  defp handle_smart_tap_reveal_response({:ok, %HttpResponse{body_decoded: body}}, ec_priv) do
+    reveal = SmartTapReveal.from_response(body)
+
+    case SmartTap.decrypt_envelope(reveal.encrypted_private_key, ec_priv) do
+      {:ok, plaintext} -> {:ok, %{reveal | private_key: plaintext}}
+      {:error, reason} -> {:error, reason, body}
+    end
   end
 
-  defp handle_smart_tap_reveal_response({:error, %HttpFailure{} = failure}) do
+  defp handle_smart_tap_reveal_response({:error, %HttpFailure{} = failure}, _ec_priv) do
     {:error, reason_from_failure(failure), failure}
   end
 

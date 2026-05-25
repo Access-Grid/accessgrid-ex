@@ -286,26 +286,20 @@ IO.puts("Template #{result.id} status: #{result.status}")
 
 #### Reveal SmartTap credentials
 
-Returns the template's `smart_tap_key` encrypted with your ephemeral public key. Each request needs a fresh keypair (Rails enforces single-use by fingerprint, and rate-limits to 1 per minute per account).
+Fetches the template's SmartTap private key, decrypted client-side. The SDK generates a fresh ephemeral keypair internally, submits the public half, and decrypts the server's response — you get the plaintext PEM back without touching any crypto.
 
 ```elixir
-# Generate an ephemeral EC keypair (e.g. via openssl)
-{pub_pem, 0} = System.cmd("openssl", ["ec", "-in", "priv.pem", "-pubout"])
+{:ok, reveal} = AccessGrid.Console.reveal_smart_tap("template_id")
 
-{:ok, reveal} = AccessGrid.Console.reveal_smart_tap(
-  "template_id",
-  %{client_public_key: pub_pem}
-)
-
-IO.puts("Key version: #{reveal.key_version}")
+IO.puts("Key version:  #{reveal.key_version}")
 IO.puts("Collector ID: #{reveal.collector_id}")
-IO.puts("Fingerprint: #{reveal.fingerprint}")
-IO.inspect(reveal.encrypted_private_key, label: "envelope")
-# encrypted_private_key is a map: %{"alg" => ..., "ephemeral_public_key" => ..., "iv" => ..., "ciphertext" => ..., "tag" => ...}
-# Decrypt with your matching private key.
+IO.puts("Fingerprint:  #{reveal.fingerprint}")
+IO.puts(reveal.private_key)  # PEM — store in your reader/collector key vault
 ```
 
-If you retry with the same public key, the call returns `{:error, :conflict, _}` (single-use enforcement).
+`reveal.encrypted_private_key` is also preserved on the struct (the raw envelope as a map) for callers who want to verify or re-decrypt themselves.
+
+The server enforces single-use on pubkey fingerprint and rate-limits to 1 per minute per account. Retrying within the rate-limit window returns `{:error, :rate_limited, _}`.
 
 ### Card template pairs
 

@@ -1418,38 +1418,110 @@ defmodule AccessGrid.ConsoleTest do
     end
   end
 
-  describe "reveal_smart_tap/3" do
-    @pem "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE\n-----END PUBLIC KEY-----"
+  describe "reveal_smart_tap/2" do
+    # Captured server envelope + the matching caller keypair. Lets us assert
+    # the SDK end-to-end (HTTP → decrypt → struct) using a real server
+    # payload, by injecting the captured keypair via the `:keypair` opt so
+    # the SDK uses it instead of generating a fresh one.
+    @fixture_caller_private_key_pem """
+    -----BEGIN EC PRIVATE KEY-----
+    MHcCAQEEIIou+Kk08kWAjhi0WyIx+L2GrgStGBCPODlwKYKd5BydoAoGCCqGSM49
+    AwEHoUQDQgAE+gnDxXJt1SBaCK8roKH8QvOa/ItdQUe85JIsUc6RvhD/udLaFtHY
+    m+MnOmeSdVaKTPWudH0+iGbleB3kS7lYxQ==
+    -----END EC PRIVATE KEY-----
+    """
 
-    test "returns {:ok, SmartTapReveal} on 200" do
+    @fixture_envelope %{
+      "alg" => "ECDH-ES+A256GCM",
+      "ciphertext" => "ckYyA3FdRYjOFI/FKz/QeR5Yf9nZZFzo73kDXKZSB/EgbQ==",
+      "ephemeral_public_key" =>
+        "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7mg6i99GcIVutMPr/PXSBSQVlbLM\ntnJO10ZBjk9ZTfw6wwAVNBnDBiqY7VrdOG1JdFOYoac+NkAlyMRGYk2tVQ==\n-----END PUBLIC KEY-----\n",
+      "iv" => "5X2OCht+kLB/xQmX",
+      "tag" => "0vwkjVaCwi5zl37xvJPxeg=="
+    }
+
+    @fixture_expected_plaintext "FIXTURE-PLAINTEXT-NOT-A-CREDENTIAL"
+
+    defp fixture_keypair do
+      [pem_entry] = :public_key.pem_decode(@fixture_caller_private_key_pem)
+      ec_priv = :public_key.pem_entry_decode(pem_entry)
+      {:ECPrivateKey, _, _, params, pub_point, _} = ec_priv
+
+      pub_pem =
+        :public_key.pem_encode([
+          :public_key.pem_entry_encode(:SubjectPublicKeyInfo, {{:ECPoint, pub_point}, params})
+        ])
+
+      {ec_priv, pub_pem}
+    end
+
+    test "returns {:ok, %SmartTapReveal{private_key: pem}} on 200" do
+      {_ec_priv, pub_pem} = fixture_keypair()
+
       response_body = %{
-        "key_version" => "v1",
-        "collector_id" => "collector_abc123",
+        "key_version" => "tmpl-42",
+        "collector_id" => "12345678",
         "fingerprint" => "sha256:deadbeef",
-        "encrypted_private_key" => %{
-          "alg" => "ECDH-ES+A256GCM",
-          "ephemeral_public_key" => "BASE64_EPK",
-          "iv" => "BASE64_IV",
-          "ciphertext" => "BASE64_CIPHERTEXT",
-          "tag" => "BASE64_TAG"
-        }
+        "encrypted_private_key" => @fixture_envelope
       }
 
       expect(mock_http_client(), :post, fn url, opts ->
-        assert url == "https://api.accessgrid.com/v1/console/card-templates/tpl_abc123/smart-tap/reveal"
-        assert opts[:body][:client_public_key] == @pem
+        assert url ==
+                 "https://api.accessgrid.com/v1/console/card-templates/tpl_abc123/smart-tap/reveal"
+
+        assert opts[:body][:client_public_key] == pub_pem
         {:ok, %HttpResponse{status: 200, body_decoded: response_body}}
       end)
 
       assert {:ok, %SmartTapReveal{} = reveal} =
-               Console.reveal_smart_tap("tpl_abc123", %{client_public_key: @pem}, client: @client)
+               Console.reveal_smart_tap("tpl_abc123",
+                 client: @client,
+                 keypair: fixture_keypair()
+               )
 
-      assert reveal.key_version == "v1"
-      assert reveal.collector_id == "collector_abc123"
+      assert reveal.key_version == "tmpl-42"
+      assert reveal.collector_id == "12345678"
       assert reveal.fingerprint == "sha256:deadbeef"
-      assert reveal.encrypted_private_key["alg"] == "ECDH-ES+A256GCM"
-      assert reveal.encrypted_private_key["ciphertext"] == "BASE64_CIPHERTEXT"
-      assert reveal.encrypted_private_key["tag"] == "BASE64_TAG"
+      assert reveal.private_key == @fixture_expected_plaintext
+      assert reveal.encrypted_private_key == @fixture_envelope
+    end
+
+    test "generates a fresh keypair when :keypair isn't injected" do
+      expect(mock_http_client(), :post, fn _url, opts ->
+        # Just assert the SDK put a SubjectPublicKeyInfo PEM on the wire —
+        # we can't decrypt without the matching priv, so we short-circuit
+        # with a server-side validation_failed response.
+        assert opts[:body][:client_public_key] =~ "-----BEGIN PUBLIC KEY-----"
+
+        {:error,
+         %HttpFailure{
+           status: 422,
+           reason: :unprocessable_entity,
+           body_decoded: %{"status" => "error", "message" => "stub"}
+         }}
+      end)
+
+      assert {:error, :validation_failed, %HttpFailure{}} =
+               Console.reveal_smart_tap("tpl_abc123", client: @client)
+    end
+
+    test "returns {:error, :decrypt_failed, body} when the envelope can't be decrypted" do
+      response_body = %{
+        "key_version" => "tmpl-42",
+        "collector_id" => "12345678",
+        "fingerprint" => "sha256:deadbeef",
+        "encrypted_private_key" => Map.put(@fixture_envelope, "tag", "AAAAAAAAAAAAAAAAAAAAAA==")
+      }
+
+      expect(mock_http_client(), :post, fn _url, _opts ->
+        {:ok, %HttpResponse{status: 200, body_decoded: response_body}}
+      end)
+
+      assert {:error, :decrypt_failed, ^response_body} =
+               Console.reveal_smart_tap("tpl_abc123",
+                 client: @client,
+                 keypair: fixture_keypair()
+               )
     end
 
     test "returns {:error, :not_found, failure} on 404" do
@@ -1463,7 +1535,7 @@ defmodule AccessGrid.ConsoleTest do
       end)
 
       assert {:error, :not_found, %HttpFailure{}} =
-               Console.reveal_smart_tap("tpl_missing", %{client_public_key: @pem}, client: @client)
+               Console.reveal_smart_tap("tpl_missing", client: @client)
     end
 
     test "returns {:error, :conflict, failure} on 409 (single-use pubkey)" do
@@ -1480,10 +1552,10 @@ defmodule AccessGrid.ConsoleTest do
       end)
 
       assert {:error, :conflict, %HttpFailure{}} =
-               Console.reveal_smart_tap("tpl_abc123", %{client_public_key: @pem}, client: @client)
+               Console.reveal_smart_tap("tpl_abc123", client: @client)
     end
 
-    test "returns {:error, :validation_failed, failure} on 422 invalid PEM" do
+    test "returns {:error, :validation_failed, failure} on 422" do
       expect(mock_http_client(), :post, fn _url, _opts ->
         {:error,
          %HttpFailure{
@@ -1494,7 +1566,7 @@ defmodule AccessGrid.ConsoleTest do
       end)
 
       assert {:error, :validation_failed, %HttpFailure{}} =
-               Console.reveal_smart_tap("tpl_abc123", %{client_public_key: "not-a-pem"}, client: @client)
+               Console.reveal_smart_tap("tpl_abc123", client: @client)
     end
   end
 
@@ -1556,12 +1628,9 @@ defmodule AccessGrid.ConsoleTest do
                Console.publish_template(nil, client: @client)
     end
 
-    test "reveal_smart_tap requires template_id and client_public_key" do
+    test "reveal_smart_tap requires template_id" do
       assert {:error, :missing_required, [:template_id]} =
-               Console.reveal_smart_tap(nil, %{client_public_key: "pem"}, client: @client)
-
-      assert {:error, :missing_required, [:client_public_key]} =
-               Console.reveal_smart_tap("tpl_1", %{}, client: @client)
+               Console.reveal_smart_tap(nil, client: @client)
     end
 
     test "create_card_template_pair requires name, apple_card_template_id, google_card_template_id" do

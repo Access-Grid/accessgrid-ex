@@ -1,39 +1,34 @@
 defmodule AccessGrid.SmartTapReveal do
   @moduledoc """
-  Response from `AccessGrid.Console.reveal_smart_tap/3` — the Smart Tap
-  credentials for a card template, encrypted with the caller's ephemeral public
-  key.
+  Response from `AccessGrid.Console.reveal_smart_tap/2` — the SmartTap
+  credentials for a card template.
 
-  The caller decrypts `encrypted_private_key` using their corresponding private
-  key (out-of-scope for this SDK — Smart Tap decryption is the caller's
-  responsibility).
-
-  `encrypted_private_key` is exposed as a raw map (string keys) — it's an
-  encryption envelope, not a first-class entity. Expected keys:
-
-    * `"alg"` — encryption algorithm identifier
-    * `"ephemeral_public_key"` — server-side ephemeral key for ECDH
-    * `"iv"` — initialization vector
-    * `"ciphertext"` — encrypted Smart Tap private key
-    * `"tag"` — authentication tag
+  `private_key` is the plaintext PEM, decrypted client-side by the SDK; this
+  is what callers normally need. `encrypted_private_key` is the raw envelope
+  the server returned, exposed as an escape hatch for callers who want to
+  verify decryption themselves or re-decrypt later.
   """
 
   @type t :: %__MODULE__{
           key_version: String.t() | nil,
           collector_id: String.t() | nil,
           fingerprint: String.t() | nil,
-          encrypted_private_key: map() | nil
+          encrypted_private_key: map() | nil,
+          private_key: binary() | nil
         }
 
   defstruct [
     :key_version,
     :collector_id,
     :fingerprint,
-    :encrypted_private_key
+    :encrypted_private_key,
+    :private_key
   ]
 
   @doc """
-  Creates a SmartTapReveal struct from an API response map.
+  Creates a SmartTapReveal struct from an API response map. `private_key`
+  is left `nil` and filled in by `AccessGrid.Console.reveal_smart_tap/2`
+  after the envelope is decrypted.
   """
   @spec from_response(map()) :: t()
   def from_response(data) when is_map(data) do
