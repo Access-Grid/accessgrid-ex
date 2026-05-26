@@ -297,8 +297,6 @@ IO.puts("Fingerprint:  #{reveal.fingerprint}")
 IO.puts(reveal.private_key)  # PEM — store in your reader/collector key vault
 ```
 
-`reveal.encrypted_private_key` is also preserved on the struct (the raw envelope as a map) for callers who want to verify or re-decrypt themselves.
-
 The server enforces single-use on pubkey fingerprint and rate-limits to 1 per minute per account. Retrying within the rate-limit window returns `{:error, :rate_limited, _}`.
 
 ### Card template pairs

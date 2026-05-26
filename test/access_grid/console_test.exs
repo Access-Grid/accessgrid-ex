@@ -1483,7 +1483,7 @@ defmodule AccessGrid.ConsoleTest do
       assert reveal.collector_id == "12345678"
       assert reveal.fingerprint == "sha256:deadbeef"
       assert reveal.private_key == @fixture_expected_plaintext
-      assert reveal.encrypted_private_key == @fixture_envelope
+      refute Map.has_key?(reveal, :encrypted_private_key)
     end
 
     test "generates a fresh keypair when :keypair isn't injected" do

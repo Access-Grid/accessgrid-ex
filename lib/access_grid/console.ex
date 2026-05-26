@@ -693,9 +693,8 @@ defmodule AccessGrid.Console do
 
   The SDK generates a fresh ephemeral P-256 keypair per call, submits the
   public half, and decrypts the server's response client-side. The returned
-  `%SmartTapReveal{}` carries the decrypted PEM in `:private_key` (the value
-  callers normally want). The original `:encrypted_private_key` envelope is
-  also preserved on the struct as an escape hatch.
+  `%SmartTapReveal{}` carries the decrypted PEM in `:private_key`; the
+  encrypted envelope is consumed internally and not exposed.
 
   Each call uses a fresh keypair internally, so the server's single-use
   enforcement on pubkey fingerprint is satisfied automatically.
@@ -908,11 +907,12 @@ defmodule AccessGrid.Console do
   end
 
   defp handle_smart_tap_reveal_response({:ok, %HttpResponse{body_decoded: body}}, ec_priv) do
-    reveal = SmartTapReveal.from_response(body)
+    case SmartTap.decrypt_envelope(body["encrypted_private_key"], ec_priv) do
+      {:ok, plaintext} ->
+        {:ok, %{SmartTapReveal.from_response(body) | private_key: plaintext}}
 
-    case SmartTap.decrypt_envelope(reveal.encrypted_private_key, ec_priv) do
-      {:ok, plaintext} -> {:ok, %{reveal | private_key: plaintext}}
-      {:error, reason} -> {:error, reason, body}
+      {:error, reason} ->
+        {:error, reason, body}
     end
   end
 
