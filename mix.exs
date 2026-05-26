@@ -6,7 +6,7 @@ defmodule AccessGrid.MixProject do
       app: :accessgrid,
       name: "AccessGrid",
       description: "An Elixir client for the AccessGrid API",
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
