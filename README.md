@@ -16,6 +16,7 @@ AccessGrid is an Elixir SDK for interacting with the [AccessGrid.com](https://ww
   - [Webhooks](#webhooks)
   - [HID orgs](#hid-orgs)
   - [Ledger items](#ledger-items)
+- [Feature Matrix](#feature-matrix)
 - [Utilities](#utilities)
 - [Error Handling](#error-handling)
 - [Testing](#testing)
@@ -494,6 +495,40 @@ Enum.each(items, fn item ->
   if item.access_pass, do: IO.puts("  pass: #{item.access_pass.full_name}")
 end)
 ```
+
+## Feature Matrix
+
+| Endpoint | Method | Supported |
+|---|---|:---:|
+| POST /v1/key-cards | `AccessPasses.issue/2` | Y |
+| GET /v1/key-cards/{id} | `AccessPasses.get/2` | Y |
+| PATCH /v1/key-cards/{id} | `AccessPasses.update/3` | Y |
+| GET /v1/key-cards | `AccessPasses.list/2` | Y |
+| POST /v1/key-cards/{id}/suspend | `AccessPasses.suspend/2` | Y |
+| POST /v1/key-cards/{id}/resume | `AccessPasses.resume/2` | Y |
+| POST /v1/key-cards/{id}/unlink | `AccessPasses.unlink/2` | Y |
+| POST /v1/key-cards/{id}/delete | `AccessPasses.delete/2` | Y |
+| POST /v1/console/card-templates | `Console.create_template/2` | Y |
+| PUT /v1/console/card-templates/{id} | `Console.update_template/3` | Y |
+| GET /v1/console/card-templates/{id} | `Console.read_template/2` | Y |
+| POST /v1/console/card-templates/{id}/publish | `Console.publish_template/2` | Y |
+| POST /v1/console/card-templates/{id}/smart-tap/reveal | `Console.reveal_smart_tap/2` | Y |
+| GET /v1/console/card-templates/{id}/logs | `Console.get_logs/2` | Y |
+| POST /v1/console/card-templates/{id}/ios_preflight | `Console.ios_preflight/3` | Y |
+| GET /v1/console/card-template-pairs | `Console.list_card_template_pairs/1` | Y |
+| POST /v1/console/card-template-pairs | `Console.create_card_template_pair/2` | Y |
+| GET /v1/console/landing-pages | `Console.list_landing_pages/1` | Y |
+| POST /v1/console/landing-pages | `Console.create_landing_page/2` | Y |
+| PUT /v1/console/landing-pages/{id} | `Console.update_landing_page/3` | Y |
+| GET /v1/console/credential-profiles | `Console.list_credential_profiles/1` | Y |
+| POST /v1/console/credential-profiles | `Console.create_credential_profile/2` | Y |
+| GET /v1/console/webhooks | `Console.list_webhooks/1` | Y |
+| POST /v1/console/webhooks | `Console.create_webhook/2` | Y |
+| DELETE /v1/console/webhooks/{id} | `Console.delete_webhook/2` | Y |
+| POST /v1/console/hid/orgs | `Console.create_hid_org/2` | Y |
+| POST /v1/console/hid/orgs/activate | `Console.activate_hid_org/2` | Y |
+| GET /v1/console/hid/orgs | `Console.list_hid_orgs/1` | Y |
+| GET /v1/console/ledger-items | `Console.list_ledger_items/1` | Y |
 
 ## Utilities
 
