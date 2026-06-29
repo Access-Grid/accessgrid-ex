@@ -32,7 +32,7 @@ Add `accessgrid` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:accessgrid, "~> 0.2.0"}
+    {:accessgrid, "~> 0.3.0"}
   ]
 end
 ```
@@ -181,6 +181,7 @@ All template fields are flat — no `design:` or `support_info:` wrappers. Pair 
   allow_on_multiple_devices: true,
   watch_count: 2,
   iphone_count: 3,
+  android_device_limit: "single_device",
   background_color: "#FFFFFF",
   label_color: "#000000",
   label_secondary_color: "#333333",
@@ -225,6 +226,7 @@ case AccessGrid.Console.read_template("template_id") do
     IO.puts("Support email: #{template.support_email}")
     IO.puts("Watch count: #{template.watch_count}")
     IO.puts("Allow on multiple devices: #{template.allow_on_multiple_devices}")
+    IO.puts("Android device limit: #{template.android_device_limit}")
     IO.puts("Issued keys: #{template.issued_keys_count}")
     IO.puts("Active keys: #{template.active_keys_count}")
     IO.puts("Credential profiles: #{inspect(template.credential_profiles)}")
