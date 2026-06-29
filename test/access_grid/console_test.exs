@@ -217,7 +217,8 @@ defmodule AccessGrid.ConsoleTest do
         "allowed_device_counts" => %{
           "allow_on_multiple_devices" => true,
           "watch" => 2,
-          "iphone" => 3
+          "iphone" => 3,
+          "android_device_limit" => "all_devices"
         },
         "support_settings" => %{
           "url" => "https://help.example.com",
@@ -257,6 +258,7 @@ defmodule AccessGrid.ConsoleTest do
       assert template.allow_on_multiple_devices == true
       assert template.watch_count == 2
       assert template.iphone_count == 3
+      assert template.android_device_limit == "all_devices"
 
       # Flattened + renamed from support_settings
       assert template.support_url == "https://help.example.com"
