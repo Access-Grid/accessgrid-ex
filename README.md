@@ -32,7 +32,7 @@ Add `accessgrid` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:accessgrid, "~> 0.3.0"}
+    {:accessgrid, "~> 0.4.0"}
   ]
 end
 ```
