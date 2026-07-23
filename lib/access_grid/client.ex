@@ -153,7 +153,7 @@ defmodule AccessGrid.Client do
 
   # --- Private helpers ---
 
-  @action_segments ~w(suspend resume unlink delete publish)
+  @action_segments ~w(suspend resume unlink delete publish verify)
 
   defp compute_payload(:get, path, _body), do: id_payload(path)
   defp compute_payload(:delete, path, _body), do: id_payload(path)

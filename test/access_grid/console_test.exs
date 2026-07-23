@@ -1572,6 +1572,148 @@ defmodule AccessGrid.ConsoleTest do
     end
   end
 
+  describe "delete_credential_profile/2" do
+    test "returns :ok on success" do
+      expect(mock_http_client(), :delete, fn url, opts ->
+        assert url == "https://api.accessgrid.com/v1/console/credential-profiles/cp_abc123"
+        # Empty-body DELETE: signature is verified via sig_payload query param
+        assert opts[:params]["sig_payload"] == ~s({"id":"cp_abc123"})
+        assert opts[:body] == nil
+        {:ok, %HttpResponse{status: 200, body_decoded: %{"id" => "cp_abc123", "deactivated" => true}}}
+      end)
+
+      assert :ok = Console.delete_credential_profile("cp_abc123", client: @client)
+    end
+
+    test "returns {:error, :validation_failed, failure} when the profile is still in use" do
+      expect(mock_http_client(), :delete, fn _url, _opts ->
+        {:error,
+         %HttpFailure{
+           status: 422,
+           reason: :unprocessable_entity,
+           body_decoded: %{
+             "status" => "error",
+             "message" => ["Credential profile is still in use"],
+             "active_pass_template_count" => 2,
+             "active_pass_count" => 5
+           }
+         }}
+      end)
+
+      assert {:error, :validation_failed, %HttpFailure{} = failure} =
+               Console.delete_credential_profile("cp_abc123", client: @client)
+
+      assert failure.body_decoded["active_pass_template_count"] == 2
+      assert failure.body_decoded["active_pass_count"] == 5
+    end
+
+    test "returns {:error, :not_found, failure} on 404" do
+      expect(mock_http_client(), :delete, fn _url, _opts ->
+        {:error,
+         %HttpFailure{
+           status: 404,
+           reason: :not_found,
+           body_decoded: %{"message" => "Credential profile not found"}
+         }}
+      end)
+
+      assert {:error, :not_found, %HttpFailure{}} =
+               Console.delete_credential_profile("cp_missing", client: @client)
+    end
+  end
+
+  describe "delete_template/2" do
+    test "returns :ok on success" do
+      expect(mock_http_client(), :delete, fn url, opts ->
+        assert url == "https://api.accessgrid.com/v1/console/card-templates/tpl_abc123"
+        # Empty-body DELETE: signature is verified via sig_payload query param
+        assert opts[:params]["sig_payload"] == ~s({"id":"tpl_abc123"})
+        assert opts[:body] == nil
+        {:ok, %HttpResponse{status: 200, body_decoded: %{"id" => "tpl_abc123", "deactivated" => true}}}
+      end)
+
+      assert :ok = Console.delete_template("tpl_abc123", client: @client)
+    end
+
+    test "returns {:error, :validation_failed, failure} when passes are still active" do
+      expect(mock_http_client(), :delete, fn _url, _opts ->
+        {:error,
+         %HttpFailure{
+           status: 422,
+           reason: :unprocessable_entity,
+           body_decoded: %{
+             "status" => "error",
+             "message" => "All access passes must be deleted before deactivating a card template",
+             "active_pass_count" => 7
+           }
+         }}
+      end)
+
+      assert {:error, :validation_failed, %HttpFailure{} = failure} =
+               Console.delete_template("tpl_abc123", client: @client)
+
+      assert failure.body_decoded["active_pass_count"] == 7
+    end
+
+    test "returns {:error, :not_found, failure} on 404" do
+      expect(mock_http_client(), :delete, fn _url, _opts ->
+        {:error,
+         %HttpFailure{
+           status: 404,
+           reason: :not_found,
+           body_decoded: %{"message" => "Card template not found"}
+         }}
+      end)
+
+      assert {:error, :not_found, %HttpFailure{}} =
+               Console.delete_template("tpl_missing", client: @client)
+    end
+  end
+
+  describe "verify_webhook/2" do
+    test "returns {:ok, result} with verified true on 200 (already verified)" do
+      expect(mock_http_client(), :post, fn url, opts ->
+        assert url == "https://api.accessgrid.com/v1/console/webhooks/wh_abc123/verify"
+        # Empty-body POST: signature is verified via sig_payload query param
+        assert opts[:params]["sig_payload"] == ~s({"id":"wh_abc123"})
+        assert opts[:body] == nil
+        {:ok, %HttpResponse{status: 200, body_decoded: %{"id" => "wh_abc123", "verified" => true}}}
+      end)
+
+      assert {:ok, %Webhook.VerifyResult{} = result} =
+               Console.verify_webhook("wh_abc123", client: @client)
+
+      assert result.id == "wh_abc123"
+      assert result.verified == true
+    end
+
+    test "returns {:ok, result} with verified false on 202 (handshake initiated)" do
+      expect(mock_http_client(), :post, fn _url, _opts ->
+        {:ok, %HttpResponse{status: 202, body_decoded: %{"id" => "wh_abc123", "verified" => false}}}
+      end)
+
+      assert {:ok, %Webhook.VerifyResult{} = result} =
+               Console.verify_webhook("wh_abc123", client: @client)
+
+      assert result.id == "wh_abc123"
+      assert result.verified == false
+    end
+
+    test "returns {:error, :not_found, failure} on 404" do
+      expect(mock_http_client(), :post, fn _url, _opts ->
+        {:error,
+         %HttpFailure{
+           status: 404,
+           reason: :not_found,
+           body_decoded: %{"status" => "error", "message" => "Webhook not found"}
+         }}
+      end)
+
+      assert {:error, :not_found, %HttpFailure{}} =
+               Console.verify_webhook("wh_missing", client: @client)
+    end
+  end
+
   describe "client resolution" do
     test "uses client from config when not provided" do
       # Set up config for this test
@@ -1663,6 +1805,21 @@ defmodule AccessGrid.ConsoleTest do
     test "delete_webhook requires webhook_id" do
       assert {:error, :missing_required, [:webhook_id]} =
                Console.delete_webhook(nil, client: @client)
+    end
+
+    test "delete_credential_profile requires credential_profile_id" do
+      assert {:error, :missing_required, [:credential_profile_id]} =
+               Console.delete_credential_profile(nil, client: @client)
+    end
+
+    test "delete_template requires template_id" do
+      assert {:error, :missing_required, [:template_id]} =
+               Console.delete_template(nil, client: @client)
+    end
+
+    test "verify_webhook requires webhook_id" do
+      assert {:error, :missing_required, [:webhook_id]} =
+               Console.verify_webhook(nil, client: @client)
     end
 
     test "create_hid_org requires all five contact fields" do

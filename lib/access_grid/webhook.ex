@@ -54,3 +54,31 @@ defmodule AccessGrid.Webhook do
     }
   end
 end
+
+defmodule AccessGrid.Webhook.VerifyResult do
+  @moduledoc """
+  Result of verifying a webhook via `AccessGrid.Console.verify_webhook/2`.
+  Contains the webhook id and its verification state:
+
+    * `verified: true` — the webhook was already verified; no state change.
+    * `verified: false` — verification has been initiated for the webhook.
+  """
+
+  @type t :: %__MODULE__{
+          id: String.t() | nil,
+          verified: boolean() | nil
+        }
+
+  defstruct [:id, :verified]
+
+  @doc """
+  Creates a VerifyResult struct from an API response map.
+  """
+  @spec from_response(map()) :: t()
+  def from_response(data) when is_map(data) do
+    %__MODULE__{
+      id: data["id"],
+      verified: data["verified"]
+    }
+  end
+end

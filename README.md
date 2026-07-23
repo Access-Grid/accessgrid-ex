@@ -287,6 +287,14 @@ IO.puts("Template #{result.id} status: #{result.status}")
 # queued), or "ready" (Android immediate)
 ```
 
+#### Delete a template
+
+Returns `:ok` on success. If any access passes still reference the template the call returns `{:error, :validation_failed, _}` with `active_pass_count` in `failure.body_decoded` — delete those passes first.
+
+```elixir
+:ok = AccessGrid.Console.delete_template("template_id")
+```
+
 #### Reveal SmartTap credentials
 
 Fetches the template's SmartTap private key, decrypted client-side. The SDK generates a fresh ephemeral keypair internally, submits the public half, and decrypts the server's response — you get the plaintext PEM back without touching any crypto.
@@ -399,6 +407,14 @@ IO.inspect(profile.keys, label: "keys")
 IO.inspect(profile.files, label: "files")
 ```
 
+#### Delete a credential profile
+
+Returns `:ok` on success. If templates or passes still reference the profile the call returns `{:error, :validation_failed, _}` with `active_pass_template_count` and `active_pass_count` in `failure.body_decoded`.
+
+```elixir
+:ok = AccessGrid.Console.delete_credential_profile("credential_profile_id")
+```
+
 ### Webhooks
 
 #### List webhooks
@@ -436,6 +452,16 @@ Returns `:ok` (flat, not `{:ok, _}`) on success since the server returns 204 No 
 
 ```elixir
 :ok = AccessGrid.Console.delete_webhook("webhook_id")
+```
+
+#### Verify a webhook
+
+Returns a result carrying the webhook id and its verification state: `verified: true` if the webhook was already verified (no change), or `verified: false` if verification has just been initiated.
+
+```elixir
+{:ok, result} = AccessGrid.Console.verify_webhook("webhook_id")
+
+IO.puts("Webhook #{result.id} verified: #{result.verified}")
 ```
 
 ### HID orgs
@@ -513,6 +539,7 @@ end)
 | POST /v1/console/card-templates | `Console.create_template/2` | Y |
 | PUT /v1/console/card-templates/{id} | `Console.update_template/3` | Y |
 | GET /v1/console/card-templates/{id} | `Console.read_template/2` | Y |
+| DELETE /v1/console/card-templates/{id} | `Console.delete_template/2` | Y |
 | POST /v1/console/card-templates/{id}/publish | `Console.publish_template/2` | Y |
 | POST /v1/console/card-templates/{id}/smart-tap/reveal | `Console.reveal_smart_tap/2` | Y |
 | GET /v1/console/card-templates/{id}/logs | `Console.get_logs/2` | Y |
@@ -524,9 +551,11 @@ end)
 | PUT /v1/console/landing-pages/{id} | `Console.update_landing_page/3` | Y |
 | GET /v1/console/credential-profiles | `Console.list_credential_profiles/1` | Y |
 | POST /v1/console/credential-profiles | `Console.create_credential_profile/2` | Y |
+| DELETE /v1/console/credential-profiles/{id} | `Console.delete_credential_profile/2` | Y |
 | GET /v1/console/webhooks | `Console.list_webhooks/1` | Y |
 | POST /v1/console/webhooks | `Console.create_webhook/2` | Y |
 | DELETE /v1/console/webhooks/{id} | `Console.delete_webhook/2` | Y |
+| POST /v1/console/webhooks/{id}/verify | `Console.verify_webhook/2` | Y |
 | POST /v1/console/hid/orgs | `Console.create_hid_org/2` | Y |
 | POST /v1/console/hid/orgs/activate | `Console.activate_hid_org/2` | Y |
 | GET /v1/console/hid/orgs | `Console.list_hid_orgs/1` | Y |
