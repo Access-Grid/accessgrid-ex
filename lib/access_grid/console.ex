@@ -69,6 +69,9 @@ defmodule AccessGrid.Console do
   @type webhook_result ::
           {:ok, Webhook.t()} | {:error, Types.api_error_reason(), HttpFailure.t() | [atom(), ...]}
   @type webhook_delete_result :: :ok | {:error, Types.api_error_reason(), HttpFailure.t() | [atom(), ...]}
+  @type delete_result :: :ok | {:error, Types.api_error_reason(), HttpFailure.t() | [atom(), ...]}
+  @type webhook_verify_result ::
+          {:ok, Webhook.VerifyResult.t()} | {:error, Types.api_error_reason(), HttpFailure.t() | [atom(), ...]}
   @type hid_orgs_result ::
           {:ok, [HidOrg.t()]} | {:error, Types.api_error_reason(), HttpFailure.t() | [atom(), ...]}
   @type hid_org_result ::
@@ -453,6 +456,33 @@ defmodule AccessGrid.Console do
   end
 
   @doc """
+  Deletes a credential profile.
+
+  ## Parameters
+
+    * `credential_profile_id` - The credential profile ID to delete
+    * `opts` - Options:
+      * `:client` - Client struct (optional, defaults to config)
+
+  ## Returns
+
+    * `:ok` - Deleted
+    * `{:error, :validation_failed, %HttpFailure{}}` - 422 while templates or
+      passes still reference the profile; `failure.body_decoded` carries
+      `active_pass_template_count` and `active_pass_count`
+    * `{:error, :not_found, %HttpFailure{}}` - 404 if id missing
+
+  """
+  @spec delete_credential_profile(String.t(), keyword()) :: delete_result()
+  def delete_credential_profile(credential_profile_id, opts \\ []) do
+    with :ok <- Params.require_present(credential_profile_id, :credential_profile_id) do
+      opts[:client]
+      |> Client.request(:delete, "#{@base_path}/credential-profiles/#{credential_profile_id}")
+      |> handle_delete_response()
+    end
+  end
+
+  @doc """
   Lists webhook subscriptions for the account.
 
   ## Parameters
@@ -532,6 +562,31 @@ defmodule AccessGrid.Console do
       opts[:client]
       |> Client.request(:delete, "#{@base_path}/webhooks/#{webhook_id}")
       |> handle_webhook_delete_response()
+    end
+  end
+
+  @doc """
+  Verifies a webhook subscription.
+
+  ## Parameters
+
+    * `webhook_id` - The webhook ID to verify
+    * `opts` - Options:
+      * `:client` - Client struct (optional, defaults to config)
+
+  ## Returns
+
+    * `{:ok, %Webhook.VerifyResult{}}` - `verified: true` if the webhook was
+      already verified, `verified: false` if verification was initiated
+    * `{:error, :not_found, %HttpFailure{}}` - 404 if id missing
+
+  """
+  @spec verify_webhook(String.t(), keyword()) :: webhook_verify_result()
+  def verify_webhook(webhook_id, opts \\ []) do
+    with :ok <- Params.require_present(webhook_id, :webhook_id) do
+      opts[:client]
+      |> Client.request(:post, "#{@base_path}/webhooks/#{webhook_id}/verify")
+      |> handle_webhook_verify_response()
     end
   end
 
@@ -685,6 +740,33 @@ defmodule AccessGrid.Console do
       opts[:client]
       |> Client.request(:post, "#{@base_path}/card-templates/#{template_id}/publish")
       |> handle_publish_response()
+    end
+  end
+
+  @doc """
+  Deletes a card template.
+
+  ## Parameters
+
+    * `template_id` - The card template id to delete
+    * `opts` - Options:
+      * `:client` - Client struct (optional, defaults to config)
+
+  ## Returns
+
+    * `:ok` - Deleted
+    * `{:error, :validation_failed, %HttpFailure{}}` - 422 while access passes
+      still reference the template; `failure.body_decoded` carries
+      `active_pass_count`
+    * `{:error, :not_found, %HttpFailure{}}` - 404 if template missing
+
+  """
+  @spec delete_template(String.t(), keyword()) :: delete_result()
+  def delete_template(template_id, opts \\ []) do
+    with :ok <- Params.require_present(template_id, :template_id) do
+      opts[:client]
+      |> Client.request(:delete, "#{@base_path}/card-templates/#{template_id}")
+      |> handle_delete_response()
     end
   end
 
@@ -863,6 +945,20 @@ defmodule AccessGrid.Console do
   defp handle_webhook_delete_response({:ok, %HttpResponse{}}), do: :ok
 
   defp handle_webhook_delete_response({:error, %HttpFailure{} = failure}) do
+    {:error, reason_from_failure(failure), failure}
+  end
+
+  defp handle_delete_response({:ok, %HttpResponse{}}), do: :ok
+
+  defp handle_delete_response({:error, %HttpFailure{} = failure}) do
+    {:error, reason_from_failure(failure), failure}
+  end
+
+  defp handle_webhook_verify_response({:ok, %HttpResponse{body_decoded: body}}) do
+    {:ok, Webhook.VerifyResult.from_response(body)}
+  end
+
+  defp handle_webhook_verify_response({:error, %HttpFailure{} = failure}) do
     {:error, reason_from_failure(failure), failure}
   end
 

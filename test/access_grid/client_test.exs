@@ -274,7 +274,7 @@ defmodule AccessGrid.ClientTest do
       # All actions should use {"id":"card_123"} -> same signature
       expected_sig = "0b1918a2ba398bbd851ba5ab8bbcfe3a3fdbee5857f64e49439d97a717f76d51"
 
-      for action <- ~w(suspend resume unlink delete) do
+      for action <- ~w(suspend resume unlink delete publish verify) do
         expect(mock_http_client(), :post, fn _url, opts ->
           assert opts[:headers]["X-PAYLOAD-SIG"] == expected_sig
           {:ok, %HttpResponse{status: 200, body_decoded: %{}}}
